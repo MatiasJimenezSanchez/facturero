@@ -25,5 +25,8 @@ void editarFactura();
 void eliminarFactura();
 void exportarFacturas();
 void mostrarDetalleFactura();
+int validarEnteroPositivo();
+float validarFlotantePositivo();
+void validarCadena();  
 
 

@@ -40,53 +40,24 @@ void saveFactura(struct Factura *factura) {
     printf("Factura guardada\n");
     fclose(file);
 }
-
 void createFactura() {
     struct Factura factura;
-    printf("Nombre del cliente: ");
-    leerCadena(factura.nombre, 20);
-
-    do {
-        printf("Cedula del cliente: ");
-        scanf("%d", &factura.cedula);
-        if (factura.cedula < 0) {
-            printf("La cedula no puede ser negativa. Intentelo de nuevo.\n");
-        }
-    } while (factura.cedula < 0);
-
-    do {
-        printf("Numero de productos: ");
-        scanf("%d", &factura.numProductos);
-        if (factura.numProductos < 0) {
-            printf("El numero de productos no puede ser negativo. Intentelo de nuevo.\n");
-        }
-    } while (factura.numProductos < 0);
+    validarCadena("Nombre del cliente: ", factura.nombre, 20);
+    factura.cedula = validarEnteroPositivo("Cedula del cliente: ");
+    factura.numProductos = validarEnteroPositivo("Numero de productos: ");
 
     factura.total = 0;
     for (int i = 0; i < factura.numProductos; i++) {
-        printf("Nombre del producto: ");
-        leerCadena(factura.productos[i].nombre, 50);
-
-        do {
-            printf("Cantidad: ");
-            scanf("%d", &factura.productos[i].cantidad);
-            if (factura.productos[i].cantidad < 0) {
-                printf("La cantidad no puede ser negativa. Intentelo de nuevo.\n");
-            }
-        } while (factura.productos[i].cantidad < 0);
-
-        do {
-            printf("Precio: ");
-            scanf("%f", &factura.productos[i].precio);
-            if (factura.productos[i].precio < 0) {
-                printf("El precio no puede ser negativo. Intentelo de nuevo.\n");
-            }
-        } while (factura.productos[i].precio < 0);
-
+        validarCadena("Nombre del producto: ", factura.productos[i].nombre, 50);
+        factura.productos[i].cantidad = validarEnteroPositivo("Cantidad: ");
+        factura.productos[i].precio = validarFlotantePositivo("Precio: ");
         factura.total += factura.productos[i].cantidad * factura.productos[i].precio;
     }
+
     saveFactura(&factura);
+    printf("Factura creada con exito.\n");
 }
+
 
 void readFactura() {
     FILE *file = fopen("factura.dat", "rb");
@@ -96,10 +67,16 @@ void readFactura() {
         printf("Error al abrir el archivo\n");
         return;
     }
-    printf("Cedula\t\tNombre\t\tTotal\n");
+
+    printf("%-12s %-22s %-7s\n", "Cedula", "Nombre", "Total");
+    printf("------------------------------------------------\n");
+
     while (fread(&factura, sizeof(struct Factura), 1, file)) {
-        printf("%d\t\t%s\t\t%.2f\n", factura.cedula, factura.nombre, factura.total);
+        if (factura.cedula != 0) {
+            printf("%-12d %-22s %-7.2f\n", factura.cedula, factura.nombre, factura.total);
+        }
     }
+
     fclose(file);
 }
 
@@ -114,57 +91,27 @@ void editarFactura() {
         return;
     }
 
-    do {
-        printf("Ingrese la cédula de la factura a editar: ");
-        scanf("%d", &cedulaBuscar);
-        if (cedulaBuscar < 0) {
-            printf("La cedula no puede ser negativa. Intentelo de nuevo.\n");
-        }
-    } while (cedulaBuscar < 0);
+    cedulaBuscar = validarEnteroPositivo("Ingrese la cedula de la factura a editar: ");
 
     while (fread(&factura, sizeof(struct Factura), 1, file)) {
-        if (factura.cedula == cedulaBuscar) {
+        if (factura.cedula == cedulaBuscar && factura.cedula != 0) {
             printf("Factura encontrada. Ingrese los nuevos datos:\n");
-            printf("Nombre del cliente: ");
-            leerCadena(factura.nombre, 20);
-
-            do {
-                printf("Numero de productos: ");
-                scanf("%d", &factura.numProductos);
-                if (factura.numProductos < 0) {
-                    printf("El numero de productos no puede ser negativo. Intentelo de nuevo.\n");
-                }
-            } while (factura.numProductos < 0);
-
+            validarCadena("Nombre del cliente: ", factura.nombre, 20);
+            factura.numProductos = validarEnteroPositivo("Numero de productos: ");
             factura.total = 0;
+
             for (int i = 0; i < factura.numProductos; i++) {
-                printf("Nombre del producto: ");
-                leerCadena(factura.productos[i].nombre, 50);
-
-                do {
-                    printf("Cantidad: ");
-                    scanf("%d", &factura.productos[i].cantidad);
-                    if (factura.productos[i].cantidad < 0) {
-                        printf("La cantidad no puede ser negativa. Intentelo de nuevo.\n");
-                    }
-                } while (factura.productos[i].cantidad < 0);
-
-                do {
-                    printf("Precio: ");
-                    scanf("%f", &factura.productos[i].precio);
-                    if (factura.productos[i].precio < 0) {
-                        printf("El precio no puede ser negativo. Intentelo de nuevo.\n");
-                    }
-                } while (factura.productos[i].precio < 0);
-
+                validarCadena("Nombre del producto: ", factura.productos[i].nombre, 50);
+                factura.productos[i].cantidad = validarEnteroPositivo("Cantidad: ");
+                factura.productos[i].precio = validarFlotantePositivo("Precio: ");
                 factura.total += factura.productos[i].cantidad * factura.productos[i].precio;
             }
 
-            // Retroceder el puntero para reescribir la factura
             fseek(file, -sizeof(struct Factura), SEEK_CUR);
             fwrite(&factura, sizeof(struct Factura), 1, file);
-            encontrado = 1;
+
             printf("Factura actualizada con exito.\n");
+            encontrado = 1;
             break;
         }
     }
@@ -172,48 +119,34 @@ void editarFactura() {
     fclose(file);
 
     if (!encontrado) {
-        printf("Factura con cédula %d no encontrada.\n", cedulaBuscar);
+        printf("Factura con cedula %d no encontrada o ha sido eliminada.\n", cedulaBuscar);
     }
 }
 
+
+
 void eliminarFactura() {
-    FILE *file = fopen("factura.dat", "rb");
-    struct Factura facturas[100];
+    FILE *file = fopen("factura.dat", "rb+");
     struct Factura factura;
-    int cedulaEliminar, totalFacturas = 0, encontrado = 0;
+    int cedulaEliminar;
+    int encontrado = 0;
 
     if (file == NULL) {
         printf("Error al abrir el archivo\n");
         return;
     }
 
-    // Leer todas las facturas en memoria
+    printf("Ingrese la cedula de la factura a eliminar: ");
+    scanf("%d", &cedulaEliminar);
+
     while (fread(&factura, sizeof(struct Factura), 1, file)) {
-        facturas[totalFacturas++] = factura;
-    }
-    fclose(file);
-
-    do {
-        printf("Ingrese la cedula de la factura a eliminar: ");
-        scanf("%d", &cedulaEliminar);
-        if (cedulaEliminar < 0) {
-            printf("La cedula no puede ser negativa. Intentelo de nuevo.\n");
-        }
-    } while (cedulaEliminar < 0);
-
-    // Reescribir el archivo excluyendo la factura eliminada
-    file = fopen("factura.dat", "wb");
-    if (file == NULL) {
-        printf("Error al abrir el archivo\n");
-        return;
-    }
-
-    for (int i = 0; i < totalFacturas; i++) {
-        if (facturas[i].cedula == cedulaEliminar) {
+        if (factura.cedula == cedulaEliminar) {
+            factura.cedula = 0;
+            fseek(file, -sizeof(struct Factura), SEEK_CUR);
+            fwrite(&factura, sizeof(struct Factura), 1, file);
             printf("Factura con cedula %d eliminada.\n", cedulaEliminar);
             encontrado = 1;
-        } else {
-            fwrite(&facturas[i], sizeof(struct Factura), 1, file);
+            break;
         }
     }
 
@@ -223,6 +156,8 @@ void eliminarFactura() {
         printf("Factura con cedula %d no encontrada.\n", cedulaEliminar);
     }
 }
+
+
 void exportarFacturas() {
     FILE *file = fopen("factura.dat", "rb");
     FILE *txtFile = fopen("facturas_exportadas.txt", "w");
@@ -283,14 +218,14 @@ void mostrarDetalleFactura() {
             printf("Nombre del cliente: %s\n", factura.nombre);
             printf("Productos:\n");
             printf("------------------------------------------------------------\n");
-            printf("Nombre\t\tCantidad\tPrecio Unitario\tSubtotal\n");
+            printf("Nombre\t\tCantidad\tPrecio\tSubtotal\n");
             printf("------------------------------------------------------------\n");
 
             for (int i = 0; i < factura.numProductos; i++) {
                 float subtotal = factura.productos[i].cantidad * factura.productos[i].precio;
                 printf("%s\t\t%d\t\t%.2f\t\t%.2f\n", 
                     factura.productos[i].nombre, 
-                    factura.productos[i].cantidad, 
+                    factura.productos[i].cantidad,
                     factura.productos[i].precio, 
                     subtotal);
             }
@@ -306,4 +241,48 @@ void mostrarDetalleFactura() {
     if (!encontrado) {
         printf("Factura con cedula %d no encontrada.\n", cedulaBuscar);
     }
+}
+int validarEnteroPositivo(const char *mensaje) {
+    int valor;
+    do {
+        printf("%s", mensaje);
+        if (scanf("%d", &valor) != 1) {
+            printf("Entrada invalida. Ingrese un numero entero positivo.\n");
+            while (getchar() != '\n'); // Limpiar el buffer de entrada
+            valor = -1;
+        } else if (valor < 0) {
+            printf("El numero debe ser positivo. Intentelo de nuevo.\n");
+        }
+    } while (valor < 0);
+    return valor;
+}
+
+float validarFlotantePositivo(const char *mensaje) {
+    float valor;
+    do {
+        printf("%s", mensaje);
+        if (scanf("%f", &valor) != 1) {
+            printf("Entrada invalida. Ingrese un numero positivo.\n");
+            while (getchar() != '\n'); // Limpiar el buffer de entrada
+            valor = -1.0;
+        } else if (valor < 0) {
+            printf("El numero debe ser positivo. Intentelo de nuevo.\n");
+        }
+    } while (valor < 0);
+    return valor;
+}
+
+void validarCadena(const char *mensaje, char *cadena, int longitudMaxima) {
+    do {
+        printf("%s", mensaje);
+        fflush(stdin);
+        fgets(cadena, longitudMaxima, stdin);
+        size_t len = strlen(cadena);
+        if (len > 0 && cadena[len - 1] == '\n') {
+            cadena[len - 1] = '\0';
+        }
+        if (strlen(cadena) == 0) {
+            printf("La entrada no puede estar vacia. Intentelo de nuevo.\n");
+        }
+    } while (strlen(cadena) == 0);
 }
